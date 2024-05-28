@@ -14,27 +14,32 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// schema.prisma Model
-model Products {
-  productId   Int     @id @default(autoincrement()) @map("productId")
-  productName String  @unique @map("productName")
-  price       Int     @default(1000) @map("price")
-  info        String? @map("info") @db.Text
+model Users {
+  id Int @id @default(autoincrement())
+  email String @unique
+  password String
+  name String
+  role String
 
-  createdAt DateTime @default(now()) @map("createdAt")
-  updatedAt DateTime @updatedAt @map("updatedAt")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@map("Products")
+  resume Resume[]
+
+  @@map("Users")
 }
 
+model Resume {
+  id Int @id @default(autoincrement())
+  userId Int
+  user Users @relation(fields: [userId], references: [id])
 
-model Posts {
-  postId    Int      @id @default(autoincrement()) @map("postId")
-  title     String   @map("title")
-  content   String   @map("content") @db.Text
-  password  String   @map("password")
-  createdAt DateTime @default(now()) @map("createdAt")
-  updatedAt DateTime @updatedAt @map("updatedAt")
+  title String
+  content String @db.Text
+  status String
 
-  @@map("Posts")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("Resume")
 }
