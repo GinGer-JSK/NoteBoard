@@ -2,13 +2,13 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 
+dotenv.config();
+
 const ACCESS_TOKEN_SECRET_KEY = process.env.ACCESS_TOKEN_SECRET_KEY;
 const REFRESH_TOKEN_SECRET_KEY = process.env.REFRESH_TOKEN_SECRET_KEY;
 
 const router = express.Router();
-dotenv.config();
-
-let tokenStorage = {};
+let tokenStorage = {}; // Refresh Token을 저장할 객체
 
 /** Access Token, Refresh Token 발급 API **/
 router.post('/tokens', (req, res) => {
@@ -16,14 +16,15 @@ router.post('/tokens', (req, res) => {
   const accessToken = createAccessToken(id);
   const refreshToken = createRefreshToken(id);
 
+  // Refresh Token을 가지고 해당 유저의 정보를 서버에 저장합니다.
   tokenStorage[refreshToken] = {
-    id: id,
-    ip: req.ip,
-    userAgent: req.headers['user-agent'],
+    id: id, // 사용자에게 전달받은 ID를 저장합니다.
+    ip: req.ip, // 사용자의 IP 정보를 저장합니다.
+    userAgent: req.headers['user-agent'], // 사용자의 User Agent 정보를 저장합니다.
   };
 
-  res.cookie('accessToken', accessToken);
-  res.cookie('refreshToken', refreshToken);
+  res.cookie('accessToken', accessToken); // Access Token을 Cookie에 전달한다.
+  res.cookie('refreshToken', refreshToken); // Refresh Token을 Cookie에 전달한다.
 
   return res
     .status(200)
@@ -32,18 +33,22 @@ router.post('/tokens', (req, res) => {
 
 // Access Token을 생성하는 함수
 function createAccessToken(id) {
-  const accessToken = jwt.sign({ id: id }, ACCESS_TOKEN_SECRET_KEY, {
-    expiresIn: '7d',
-  });
+  const accessToken = jwt.sign(
+    { id: id }, // JWT 데이터
+    ACCESS_TOKEN_SECRET_KEY, // Access Token의 비밀 키
+    { expiresIn: '10s' } // Access Token이 10초 뒤에 만료되도록 설정합니다.
+  );
 
   return accessToken;
 }
 
 // Refresh Token을 생성하는 함수
 function createRefreshToken(id) {
-  const refreshToken = jwt.sign({ id: id }, REFRESH_TOKEN_SECRET_KEY, {
-    expiresIn: '7d',
-  });
+  const refreshToken = jwt.sign(
+    { id: id }, // JWT 데이터
+    REFRESH_TOKEN_SECRET_KEY, // Refresh Token의 비밀 키
+    { expiresIn: '7d' } // Refresh Token이 7일 뒤에 만료되도록 설정합니다.
+  );
 
   return refreshToken;
 }
@@ -70,6 +75,16 @@ router.get('/tokens/validate', (req, res) => {
     message: `${id}의 Payload를 가진 Token이 성공적으로 인증되었습니다.`,
   });
 });
+
+// Token을 검증하고 Payload를 반환합니다.
+function validateToken(token, secretKey) {
+  try {
+    const payload = jwt.verify(token, secretKey);
+    return payload;
+  } catch (error) {
+    return null;
+  }
+}
 
 /** 리프레시 토큰 검증 API **/
 router.post('/tokens/refresh', (req, res) => {
@@ -98,15 +113,5 @@ router.post('/tokens/refresh', (req, res) => {
   res.cookie('accessToken', newAccessToken);
   return res.json({ message: 'Access Token을 새롭게 발급하였습니다.' });
 });
-
-// Token을 검증하고 Payload를 반환합니다.
-function validateToken(token, secretKey) {
-  try {
-    const payload = jwt.verify(token, secretKey);
-    return payload;
-  } catch (error) {
-    return null;
-  }
-}
 
 export default router;
